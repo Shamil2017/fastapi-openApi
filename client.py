@@ -1,12 +1,48 @@
 import requests
+import speech_recognition as sr
 
-url = "http://194.59.40.99:7990/process_text/"
+# Function to record audio
+def record_audio(recognizer, microphone, timeout_duration):
+    with microphone as source:
+        print("Говорите")
+        try:
+            audio = recognizer.listen(source, timeout=timeout_duration)
+            return audio
+        except sr.WaitTimeoutError:
+            print("Пользователь ничего не сказал в течение времени ожидания")
+            return None
 
-system_content = "Вы психолог, специализирующийся на детях"
-user_content = "Помогите мне правильно воспитать дочь. Она со мной спорит. Я ее наказываю. Дай ответ на русском языке"
+# Function to recognize speech
+def recognize_speech(recognizer, audio):
+    try:
+        message_txt = recognizer.recognize_google(audio, language="ru-RU")
+        print("Вы сказали: " + message_txt)
+        return message_txt
+    except sr.UnknownValueError:
+        print("Не удалось распознать")
+        return None
+    except sr.RequestError:
+        print("Не получилось запросить результаты")
+        return None
 
-payload = {"system_content": system_content, "user_content": user_content}
-headers = {"Content-Type": "application/json"}
+# Main function to send request
+def send_request(user_content):
+    url = "http://194.59.40.99:7990/process_text/"
+    system_content = "Вы психолог, специализирующийся на детях"
 
-response = requests.post(url, json=payload, headers=headers)
-print(response.json()["response"])
+    payload = {"system_content": system_content, "user_content": user_content}
+    headers = {"Content-Type": "application/json"}
+
+    response = requests.post(url, json=payload, headers=headers)
+    print(response.json()["response"])
+
+# Main code
+if __name__ == "__main__":
+    mic = sr.Microphone()
+    r = sr.Recognizer()
+
+    audio = record_audio(r, mic, timeout_duration=5)
+    if audio is not None:
+        user_content = recognize_speech(r, audio)
+        if user_content:
+            send_request(user_content)
